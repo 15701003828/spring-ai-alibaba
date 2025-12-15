@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: BossFeedbackAnalyzer
+  
+  ai:
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY}
+  
+  # Redis缓存配置
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  
+  # 数据库配置（可选，如果使用关系数据库存储工单）
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:boss_feedback}?useSSL=false&serverTimezone=UTC
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+# Milvus配置（向量数据库）
+milvus:
+  host: ${MILVUS_HOST:localhost}
+  port: ${MILVUS_PORT:19530}
+  collection-name: feedback_tickets
+  dimension: 1536
+
+# 缓存配置
+cache:
+  ticket:
+    classification-ttl: 24h  # 分类结果缓存24小时
+    search-ttl: 1h          # 搜索结果缓存1小时
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.alibaba.cloud.ai: DEBUG
+    org.springframework.ai: INFO
+
