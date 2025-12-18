@@ -15,17 +15,24 @@
  */
 package com.alibaba.cloud.ai.examples.bossfeedback;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * BOSS直聘用户反馈工单分析助手主应用
  */
-@SpringBootApplication
+@Slf4j
+@SpringBootApplication(scanBasePackages = {"com.alibaba"})
 public class BossFeedbackAnalyzerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(BossFeedbackAnalyzerApplication.class, args);
+        try {
+            SpringApplication.run(BossFeedbackAnalyzerApplication.class, args);
+            log.info("<--- BossFeedbackAnalyzerApplication Application Startup Success --->");
+        } catch (Exception ex) {
+            log.error("BossFeedbackAnalyzerApplication Application Startup Error", ex);
+        }
     }
 }
 

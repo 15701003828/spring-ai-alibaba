@@ -17,9 +17,9 @@ package com.alibaba.cloud.ai.examples.bossfeedback.service;
 
 import com.alibaba.cloud.ai.examples.bossfeedback.model.FeedbackTicket;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -32,14 +32,9 @@ import java.util.UUID;
  */
 @Service
 public class TicketStorageService {
-    
-    private final VectorStore vectorStore;
-    private final EmbeddingModel embeddingModel;
-    
-    public TicketStorageService(VectorStore vectorStore, EmbeddingModel embeddingModel) {
-        this.vectorStore = vectorStore;
-        this.embeddingModel = embeddingModel;
-    }
+
+    @Autowired
+    private VectorStore vectorStore;
     
     /**
      * 存储工单到向量数据库

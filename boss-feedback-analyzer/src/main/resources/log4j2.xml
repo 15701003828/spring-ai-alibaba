@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG">
+
+    <Properties>
+        <Property name="APP_NAME" value="boss"/>
+        <Property name="LOG_HOME" value="${sys:log.dir:-../logs}"/>
+        <Property name="ENCODER_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %X{traceId} %level %logger{0} [%t] %m%n"/>
+        <Property name="SMS_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %m%n"/>
+    </Properties>
+
+    <Appenders>
+        <ZpConsole name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${ENCODER_PATTERN}" />
+        </ZpConsole>
+
+    </Appenders>
+
+    <Loggers>
+
+        <AsyncLogger name="com.alibaba" additivity="false" level="INFO">
+            <AppenderRef ref="Console"/>
+        </AsyncLogger>
+
+        <Root level="INFO">
+            <AppenderRef ref="Console" />
+        </Root>
+    </Loggers>
+</Configuration>

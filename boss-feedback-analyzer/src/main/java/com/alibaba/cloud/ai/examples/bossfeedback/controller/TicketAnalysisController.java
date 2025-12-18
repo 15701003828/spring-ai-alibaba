@@ -20,7 +20,7 @@ import com.alibaba.cloud.ai.examples.bossfeedback.model.AnalysisResult;
 import com.alibaba.cloud.ai.examples.bossfeedback.model.FeedbackTicket;
 import com.alibaba.cloud.ai.examples.bossfeedback.model.TicketCategory;
 import com.alibaba.cloud.ai.examples.bossfeedback.model.ToolApprovalRequest;
-import com.alibaba.cloud.ai.examples.bossfeedback.service.TicketCacheService;
+//import com.alibaba.cloud.ai.examples.bossfeedback.service.TicketCacheService;
 import com.alibaba.cloud.ai.examples.bossfeedback.service.TicketStorageService;
 import com.alibaba.cloud.ai.graph.NodeOutput;
 import com.alibaba.cloud.ai.graph.OverAllState;
@@ -33,6 +33,7 @@ import com.alibaba.cloud.ai.graph.streaming.StreamingOutput;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
@@ -57,20 +58,27 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/tickets")
 public class TicketAnalysisController {
 
-    private final SequentialAgent mainAnalysisAgent;
-    private final TicketStorageService ticketStorageService;
-    private final TicketCacheService cacheService;
-    private final ObjectMapper objectMapper;
+    /** 主业务 Agent，由 setter 注入 */
+    private SequentialAgent mainAnalysisAgent;
 
-    public TicketAnalysisController(
-            TicketAnalysisAgentSystem agentSystem,
-            TicketStorageService ticketStorageService,
-            TicketCacheService cacheService,
-            ObjectMapper objectMapper) throws GraphStateException {
+    /** 工单存储服务，字段注入 */
+    @Autowired
+    private TicketStorageService ticketStorageService;
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * 通过 Setter 注入的方式拿到 TicketAnalysisAgentSystem，
+     * 然后在这里创建 mainAnalysisAgent，而不是在构造方法里做。
+     */
+    @Autowired
+    public void setMainAnalysisAgent(TicketAnalysisAgentSystem agentSystem) throws GraphStateException {
         this.mainAnalysisAgent = agentSystem.createMainAnalysisAgent();
-        this.ticketStorageService = ticketStorageService;
-        this.cacheService = cacheService;
-        this.objectMapper = objectMapper;
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<Integer> test() {
+        return ResponseEntity.ok(1);
     }
 
     /**
@@ -78,20 +86,20 @@ public class TicketAnalysisController {
      */
     @PostMapping("/analyze")
     public ResponseEntity<AnalysisResult> analyzeTicket(@RequestBody FeedbackTicket ticket) {
-        // 1. 检查缓存
-        Optional<TicketCategory> cachedCategory = cacheService.getCachedClassification(
-                ticket.getUserRequest() + ticket.getProblemDescription()
-        );
-
-        if (cachedCategory.isPresent()) {
-            // 如果缓存命中，可以快速返回基础分类结果
-            AnalysisResult quickResult = AnalysisResult.builder()
-                    .success(true)
-                    .fromCache(true)
-                    .category(cachedCategory.get())
-                    .build();
-            return ResponseEntity.ok(quickResult);
-        }
+//        // 1. 检查缓存
+//        Optional<TicketCategory> cachedCategory = cacheService.getCachedClassification(
+//                ticket.getUserRequest() + ticket.getProblemDescription()
+//        );
+//
+//        if (cachedCategory.isPresent()) {
+//            // 如果缓存命中，可以快速返回基础分类结果
+//            AnalysisResult quickResult = AnalysisResult.builder()
+//                    .success(true)
+//                    .fromCache(true)
+//                    .category(cachedCategory.get())
+//                    .build();
+//            return ResponseEntity.ok(quickResult);
+//        }
 
         // 2. 生成工单ID（如果没有）
         if (ticket.getTicketId() == null || ticket.getTicketId().isEmpty()) {
@@ -117,12 +125,12 @@ public class TicketAnalysisController {
         AnalysisResult analysisResult = extractAnalysisResult(result);
 
         // 6. 缓存分类结果
-        if (analysisResult.getCategory() != null) {
-            cacheService.cacheClassification(
-                    ticket.getUserRequest() + ticket.getProblemDescription(),
-                    analysisResult.getCategory()
-            );
-        }
+//        if (analysisResult.getCategory() != null) {
+//            cacheService.cacheClassification(
+//                    ticket.getUserRequest() + ticket.getProblemDescription(),
+//                    analysisResult.getCategory()
+//            );
+//        }
 
         // 7. 保存工单（异步）
         CompletableFuture.runAsync(() -> {

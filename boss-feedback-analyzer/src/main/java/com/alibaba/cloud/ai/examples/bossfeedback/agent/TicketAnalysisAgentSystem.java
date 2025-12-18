@@ -17,8 +17,7 @@ package com.alibaba.cloud.ai.examples.bossfeedback.agent;
 
 import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
-import com.alibaba.cloud.ai.examples.bossfeedback.service.TicketCacheService;
-import com.alibaba.cloud.ai.examples.bossfeedback.service.TicketStorageService;
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
@@ -31,16 +30,15 @@ import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -51,11 +49,9 @@ import java.util.stream.Collectors;
  */
 @Component
 public class TicketAnalysisAgentSystem {
-    
-    private final VectorStore vectorStore;
-    private final EmbeddingModel embeddingModel;
-    private final TicketCacheService cacheService;
-    private final TicketStorageService ticketStorageService;
+
+    @Autowired
+    private VectorStore vectorStore;
     
     @Value("${spring.ai.dashscope.api-key}")
     private String apiKey;
@@ -65,26 +61,21 @@ public class TicketAnalysisAgentSystem {
     private HumanInTheLoopHook humanInTheLoopHook;
     private ToolCallLimitHook toolCallLimitHook;
     
-    public TicketAnalysisAgentSystem(
-            VectorStore vectorStore,
-            EmbeddingModel embeddingModel,
-            TicketCacheService cacheService,
-            TicketStorageService ticketStorageService) {
-        this.vectorStore = vectorStore;
-        this.embeddingModel = embeddingModel;
-        this.cacheService = cacheService;
-        this.ticketStorageService = ticketStorageService;
-    }
-    
     @PostConstruct
     public void init() {
-        // 初始化ChatModel
-        DashScopeApi dashScopeApi = DashScopeApi.builder()
-            .apiKey(apiKey)
-            .build();
-        this.chatModel = DashScopeChatModel.builder()
-            .dashScopeApi(dashScopeApi)
-            .build();
+		// 初始化ChatModel，显式指定通义千问-Plus模型（qwen-plus）
+		DashScopeApi dashScopeApi = DashScopeApi.builder()
+				.apiKey(apiKey)
+				.build();
+
+		DashScopeChatOptions options = DashScopeChatOptions.builder()
+				.withModel("qwen-plus")
+				.build();
+
+		this.chatModel = DashScopeChatModel.builder()
+				.dashScopeApi(dashScopeApi)
+				.defaultOptions(options)
+				.build();
         
         // 初始化上下文压缩Hook - 处理长文本工单
         this.summarizationHook = SummarizationHook.builder()
@@ -285,11 +276,11 @@ public class TicketAnalysisAgentSystem {
         class CachedSimilarTicketSearchTool {
             public Response search(Request request) {
                 // 1. 检查缓存
-                String cacheKey = "similar_tickets:" + request.query().hashCode();
-                String cachedResult = cacheService.get(cacheKey);
-                if (cachedResult != null) {
-                    return new Response(cachedResult, true);
-                }
+//                String cacheKey = "similar_tickets:" + request.query().hashCode();
+//                String cachedResult = cacheService.get(cacheKey);
+//                if (cachedResult != null) {
+//                    return new Response(cachedResult, true);
+//                }
                 
                 // 2. 从向量数据库检索
                 List<Document> similarTickets = vectorStore.similaritySearch(
@@ -311,8 +302,8 @@ public class TicketAnalysisAgentSystem {
                     .filter(formatted -> !formatted.isBlank()) // 过滤空结果
                     .collect(Collectors.joining(SEPARATOR));
                 
-                // 4. 缓存结果（缓存1小时）
-                cacheService.put(cacheKey, results, java.time.Duration.ofHours(1));
+//                // 4. 缓存结果（缓存1小时）
+//                cacheService.put(cacheKey, results, java.time.Duration.ofHours(1));
                 
                 return new Response(results, false);
             }
