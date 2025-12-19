@@ -116,7 +116,12 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 			return state;
 		}
 		Map<String, Object> result = new LinkedHashMap<>(state.size());
-		state.forEach((key, value) -> result.put(key, normalizeValue(value)));
+		state.forEach((key, value) -> {
+			// 过滤null key，避免Jackson序列化报错
+			if (key != null) {
+				result.put(key, normalizeValue(value));
+			}
+		});
 		return result;
 	}
 
@@ -150,6 +155,11 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 			Map<Object, Object> result = new LinkedHashMap<>(map.size());
 			boolean changed = false;
 			for (Map.Entry<?, ?> entry : map.entrySet()) {
+				// 过滤null key，避免Jackson序列化报错
+				if (entry.getKey() == null) {
+					changed = true;
+					continue;
+				}
 				Object normalized = normalizeValue(entry.getValue());
 				result.put(entry.getKey(), normalized);
 				if (normalized != entry.getValue()) {
@@ -312,7 +322,12 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 		if (value instanceof Map) {
 			Map<?, ?> map = (Map<?, ?>) value;
 			Map<Object, Object> normalized = new LinkedHashMap<>(map.size());
-			map.forEach((k, v) -> normalized.put(k, deepNormalizeValue(v)));
+			map.forEach((k, v) -> {
+				// 过滤null key，避免Jackson序列化报错
+				if (k != null) {
+					normalized.put(k, deepNormalizeValue(v));
+				}
+			});
 			return normalized;
 		}
 

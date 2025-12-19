@@ -65,7 +65,9 @@ public class TicketAnalysisController {
     @Autowired
     private TicketStorageService ticketStorageService;
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+        .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        .configure(com.fasterxml.jackson.databind.SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
     /**
      * 通过 Setter 注入的方式拿到 TicketAnalysisAgentSystem，
@@ -132,10 +134,15 @@ public class TicketAnalysisController {
 //            );
 //        }
 
-        // 7. 保存工单（异步）
+        // 7. 将分析结果写入工单对象
+        ticket.setCategory(analysisResult.getCategory());
+        ticket.setAnalysisResult(analysisResult.getFinalReport());
+
+        // 8. 保存工单及分析结果到向量库（异步）
+        final AnalysisResult finalResult = analysisResult;
         CompletableFuture.runAsync(() -> {
             try {
-                ticketStorageService.storeTicket(ticket);
+                ticketStorageService.storeTicketWithAnalysis(ticket, finalResult);
             } catch (Exception e) {
                 // 记录错误但不影响主流程
                 System.err.println("保存工单失败: " + e.getMessage());
@@ -207,10 +214,10 @@ public class TicketAnalysisController {
                     return Flux.just(errorEvent);
                 })
                 .doOnComplete(() -> {
-                    // 流式处理完成后，异步保存工单
+                    // 流式处理完成后，异步保存工单（流式接口暂无分析结果，传null）
                     CompletableFuture.runAsync(() -> {
                         try {
-                            ticketStorageService.storeTicket(ticket);
+                            ticketStorageService.storeTicketWithAnalysis(ticket, null);
                         } catch (Exception e) {
                             System.err.println("保存工单失败: " + e.getMessage());
                         }
@@ -241,10 +248,11 @@ public class TicketAnalysisController {
                         try {
                             Optional<OverAllState> result = mainAnalysisAgent.invoke(analysisInput);
                             AnalysisResult analysisResult = extractAnalysisResult(result);
-                            // 异步保存
+                            // 异步保存（包含分析结果）
+                            final AnalysisResult finalAnalysisResult = analysisResult;
                             CompletableFuture.runAsync(() -> {
                                 try {
-                                    ticketStorageService.storeTicket(ticket);
+                                    ticketStorageService.storeTicketWithAnalysis(ticket, finalAnalysisResult);
                                 } catch (Exception e) {
                                     System.err.println("保存工单失败: " + e.getMessage());
                                 }
@@ -406,6 +414,89 @@ public class TicketAnalysisController {
                 .map(v -> v instanceof AssistantMessage ?
                         ((AssistantMessage) v).getText() : v.toString())
                 .orElse("");
+    }
+
+    /**
+     * 从工单对象中构建分析结果（用于导入接口）
+     */
+    private AnalysisResult buildAnalysisResultFromTicket(FeedbackTicket ticket) {
+        // 如果工单没有任何分析结果字段，返回null
+        if (ticket.getCategory() == null 
+                && ticket.getRootCauseAnalysis() == null 
+                && ticket.getSolutionProposal() == null
+                && ticket.getAnalysisResult() == null) {
+            return null;
+        }
+        
+        return AnalysisResult.builder()
+                .success(true)
+                .category(ticket.getCategory())
+                .rootCauseAnalysis(ticket.getRootCauseAnalysis())
+                .impactAssessment(ticket.getImpactAssessment())
+                .solutionProposal(ticket.getSolutionProposal())
+                .finalReport(ticket.getAnalysisResult())
+                .build();
+    }
+
+    /**
+     * 批量导入工单接口 - 提前录入历史工单数据到向量数据库，便于后续相似度检索
+     *
+     * @param tickets 工单列表
+     * @return 导入结果，包含成功和失败数量
+     */
+    @PostMapping("/import")
+    public ResponseEntity<Map<String, Object>> importTickets(@RequestBody List<FeedbackTicket> tickets) {
+        Map<String, Object> result = new HashMap<>();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (FeedbackTicket ticket : tickets) {
+            try {
+                // 生成工单ID（如果没有）
+                if (ticket.getTicketId() == null || ticket.getTicketId().isEmpty()) {
+                    ticket.setTicketId(ticketStorageService.generateTicketId());
+                }
+                // 从工单中构建分析结果（如果有）
+                AnalysisResult analysisResult = buildAnalysisResultFromTicket(ticket);
+                // 存储到向量数据库
+                ticketStorageService.storeTicketWithAnalysis(ticket, analysisResult);
+                successCount++;
+            } catch (Exception e) {
+                failCount++;
+                System.err.println("导入工单失败: " + e.getMessage());
+            }
+        }
+
+        result.put("total", tickets.size());
+        result.put("success", successCount);
+        result.put("failed", failCount);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 单个工单导入接口
+     *
+     * @param ticket 工单信息
+     * @return 导入后的工单ID
+     */
+    @PostMapping("/import/single")
+    public ResponseEntity<Map<String, Object>> importSingleTicket(@RequestBody FeedbackTicket ticket) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            if (ticket.getTicketId() == null || ticket.getTicketId().isEmpty()) {
+                ticket.setTicketId(ticketStorageService.generateTicketId());
+            }
+            // 从工单中构建分析结果（如果有）
+            AnalysisResult analysisResult = buildAnalysisResultFromTicket(ticket);
+            ticketStorageService.storeTicketWithAnalysis(ticket, analysisResult);
+            result.put("success", true);
+            result.put("ticketId", ticket.getTicketId());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            return ResponseEntity.internalServerError().body(result);
+        }
     }
 }
 

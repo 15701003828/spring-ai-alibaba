@@ -15,6 +15,7 @@
  */
 package com.alibaba.cloud.ai.examples.bossfeedback.service;
 
+import com.alibaba.cloud.ai.examples.bossfeedback.model.AnalysisResult;
 import com.alibaba.cloud.ai.examples.bossfeedback.model.FeedbackTicket;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -46,14 +47,15 @@ public class TicketStorageService {
         // 2. 创建Document对象
         Document document = new Document(documentText);
         
-        // 3. 添加元数据
+        // 3. 添加元数据（过滤null值，避免序列化问题）
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("ticketId", ticket.getTicketId());
-        metadata.put("userId", ticket.getUserId());
-        metadata.put("userRequest", ticket.getUserRequest());
-        metadata.put("feedbackTime", ticket.getFeedbackTime().toString());
-        metadata.put("phoneModel", ticket.getPhoneModel());
-        metadata.put("appVersion", ticket.getAppVersion());
+        putIfNotNull(metadata, "ticketId", ticket.getTicketId());
+        putIfNotNull(metadata, "userId", ticket.getUserId());
+        putIfNotNull(metadata, "userRequest", ticket.getUserRequest());
+        putIfNotNull(metadata, "problemDescription", ticket.getProblemDescription());
+        putIfNotNull(metadata, "feedbackTime", ticket.getFeedbackTime());
+        putIfNotNull(metadata, "phoneModel", ticket.getPhoneModel());
+        putIfNotNull(metadata, "appVersion", ticket.getAppVersion());
         if (ticket.getCategory() != null) {
             metadata.put("category", ticket.getCategory().name());
         }
@@ -78,7 +80,7 @@ public class TicketStorageService {
             ticket.getProblemDescription() != null ? ticket.getProblemDescription() : "",
             ticket.getPhoneModel() != null ? ticket.getPhoneModel() : "",
             ticket.getAppVersion() != null ? ticket.getAppVersion() : "",
-            ticket.getFeedbackTime() != null ? ticket.getFeedbackTime().toString() : ""
+            ticket.getFeedbackTime() != null ? ticket.getFeedbackTime() : ""
         );
     }
     
@@ -95,10 +97,88 @@ public class TicketStorageService {
     }
     
     /**
+     * 存储工单及分析结果到向量数据库
+     */
+    public void storeTicketWithAnalysis(FeedbackTicket ticket, AnalysisResult analysisResult) {
+        // 1. 构建包含分析结果的文档内容
+        String documentText = buildDocumentTextWithAnalysis(ticket, analysisResult);
+        
+        // 2. 创建Document对象
+        Document document = new Document(documentText);
+        
+        // 3. 添加元数据（过滤null值，避免序列化问题）
+        Map<String, Object> metadata = new HashMap<>();
+        putIfNotNull(metadata, "ticketId", ticket.getTicketId());
+        putIfNotNull(metadata, "userId", ticket.getUserId());
+        putIfNotNull(metadata, "userRequest", ticket.getUserRequest());
+        putIfNotNull(metadata, "problemDescription", ticket.getProblemDescription());
+        putIfNotNull(metadata, "feedbackTime", ticket.getFeedbackTime());
+        putIfNotNull(metadata, "phoneModel", ticket.getPhoneModel());
+        putIfNotNull(metadata, "appVersion", ticket.getAppVersion());
+        
+        // 添加分析结果到元数据
+        if (analysisResult != null) {
+            if (analysisResult.getCategory() != null) {
+                metadata.put("category", analysisResult.getCategory().name());
+            }
+            putIfNotNull(metadata, "rootCauseAnalysis", analysisResult.getRootCauseAnalysis());
+            putIfNotNull(metadata, "solutionProposal", analysisResult.getSolutionProposal());
+        }
+        document.getMetadata().putAll(metadata);
+        
+        // 4. 存储到向量数据库
+        vectorStore.add(List.of(document));
+    }
+    
+    /**
+     * 构建包含分析结果的文档文本（用于向量化）
+     */
+    private String buildDocumentTextWithAnalysis(FeedbackTicket ticket, AnalysisResult analysisResult) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("""
+            用户诉求：%s
+            问题描述：%s
+            手机型号：%s
+            APP版本：%s
+            反馈时间：%s
+            """,
+            ticket.getUserRequest() != null ? ticket.getUserRequest() : "",
+            ticket.getProblemDescription() != null ? ticket.getProblemDescription() : "",
+            ticket.getPhoneModel() != null ? ticket.getPhoneModel() : "",
+            ticket.getAppVersion() != null ? ticket.getAppVersion() : "",
+            ticket.getFeedbackTime() != null ? ticket.getFeedbackTime() : ""
+        ));
+        
+        // 追加分析结果（便于相似问题检索时匹配解决方案）
+        if (analysisResult != null) {
+            if (analysisResult.getCategory() != null) {
+                sb.append("问题分类：").append(analysisResult.getCategory().name()).append("\n");
+            }
+            if (analysisResult.getRootCauseAnalysis() != null && !analysisResult.getRootCauseAnalysis().isEmpty()) {
+                sb.append("根因分析：").append(analysisResult.getRootCauseAnalysis()).append("\n");
+            }
+            if (analysisResult.getSolutionProposal() != null && !analysisResult.getSolutionProposal().isEmpty()) {
+                sb.append("解决方案：").append(analysisResult.getSolutionProposal()).append("\n");
+            }
+        }
+        
+        return sb.toString();
+    }
+
+    /**
      * 生成工单ID
      */
     public String generateTicketId() {
         return "TICKET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    /**
+     * 仅当值非null时才put到map中
+     */
+    private void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) {
+            map.put(key, value);
+        }
     }
 }
 

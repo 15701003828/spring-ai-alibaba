@@ -18,18 +18,35 @@ package com.alibaba.cloud.ai.examples.bossfeedback.model;
 import java.util.List;
 
 /**
- * 分析结果
+ * 工单分析结果
  */
 public class AnalysisResult {
     
+    /** 分析是否成功 */
     private boolean success;
+    
+    /** 结果是否来自缓存 */
     private boolean fromCache;
+    
+    /** 错误信息（分析失败时返回） */
     private String errorMessage;
+    
+    /** 工单分类（Bug、功能建议、性能问题等） */
     private TicketCategory category;
+    
+    /** 根因分析结果 */
     private String rootCauseAnalysis;
+    
+    /** 影响评估（问题影响范围、严重程度等） */
     private String impactAssessment;
+    
+    /** 解决方案建议 */
     private String solutionProposal;
+    
+    /** 最终分析报告（综合所有分析结果的完整报告） */
     private String finalReport;
+    
+    /** 相似历史工单列表（用于参考历史解决方案） */
     private List<SimilarTicket> similarTickets;
     
     public static Builder builder() {
@@ -166,9 +183,16 @@ public class AnalysisResult {
      * 相似工单
      */
     public static class SimilarTicket {
+        /** 工单ID */
         private String ticketId;
+        
+        /** 用户诉求 */
         private String userRequest;
+        
+        /** 问题描述 */
         private String problemDescription;
+        
+        /** 相似度（0-1之间，越大越相似） */
         private double similarity;
         
         public SimilarTicket(String ticketId, String userRequest, String problemDescription, double similarity) {

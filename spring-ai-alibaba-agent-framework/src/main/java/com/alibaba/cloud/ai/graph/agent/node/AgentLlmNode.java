@@ -297,7 +297,16 @@ public class AgentLlmNode implements NodeActionWithConfig {
 
 	private String renderPromptTemplate(String prompt, Map<String, Object> params) {
 		PromptTemplate promptTemplate = new PromptTemplate(prompt);
-		return promptTemplate.render(params);
+		// 过滤null key，避免PromptTemplate报错
+		Map<String, Object> filteredParams = new java.util.HashMap<>();
+		if (params != null) {
+			params.forEach((k, v) -> {
+				if (k != null) {
+					filteredParams.put(k, v);
+				}
+			});
+		}
+		return promptTemplate.render(filteredParams);
 	}
 
 	public void augmentUserMessage(List<Message> messages, String outputSchema) {

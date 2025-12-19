@@ -16,7 +16,8 @@
 package com.alibaba.cloud.ai.examples.bossfeedback.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import lombok.Data;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Map;
  */
 @Entity
 @Table(name = "feedback_tickets")
+@Data
 public class FeedbackTicket {
     
     @Id
@@ -51,7 +53,7 @@ public class FeedbackTicket {
     private List<String> screenshots = new ArrayList<>();   // 截图URL列表
     
     @Column(nullable = false)
-    private LocalDateTime feedbackTime; // 反馈时间
+    private String feedbackTime; // 反馈时间，格式：yyyy-MM-dd HH:mm:ss
     
     private String phoneModel;         // 手机型号
     
@@ -61,135 +63,21 @@ public class FeedbackTicket {
     private TicketCategory category;   // 工单分类（自动分析得出）
     
     @Column(length = 10000)
-    private String analysisResult;     // 分析结果
+    private String analysisResult;     // 分析结果（最终报告）
+    
+    @Column(length = 5000)
+    private String rootCauseAnalysis;  // 根因分析
+    
+    @Column(length = 5000)
+    private String impactAssessment;   // 影响评估
+    
+    @Column(length = 5000)
+    private String solutionProposal;   // 解决方案建议
     
     @ElementCollection
     @MapKeyColumn(name = "metadata_key")
     @Column(name = "metadata_value")
     @CollectionTable(name = "ticket_metadata", joinColumns = @JoinColumn(name = "ticket_id"))
     private Map<String, String> metadata = new HashMap<>(); // 元数据
-    
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
-    
-    private LocalDateTime updatedAt;
-    
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-    
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
-    
-    public void setId(Long id) {
-        this.id = id;
-    }
-    
-    public String getTicketId() {
-        return ticketId;
-    }
-    
-    public void setTicketId(String ticketId) {
-        this.ticketId = ticketId;
-    }
-    
-    public String getUserId() {
-        return userId;
-    }
-    
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-    
-    public String getUserRequest() {
-        return userRequest;
-    }
-    
-    public void setUserRequest(String userRequest) {
-        this.userRequest = userRequest;
-    }
-    
-    public String getProblemDescription() {
-        return problemDescription;
-    }
-    
-    public void setProblemDescription(String problemDescription) {
-        this.problemDescription = problemDescription;
-    }
-    
-    public List<String> getScreenshots() {
-        return screenshots;
-    }
-    
-    public void setScreenshots(List<String> screenshots) {
-        this.screenshots = screenshots;
-    }
-    
-    public LocalDateTime getFeedbackTime() {
-        return feedbackTime;
-    }
-    
-    public void setFeedbackTime(LocalDateTime feedbackTime) {
-        this.feedbackTime = feedbackTime;
-    }
-    
-    public String getPhoneModel() {
-        return phoneModel;
-    }
-    
-    public void setPhoneModel(String phoneModel) {
-        this.phoneModel = phoneModel;
-    }
-    
-    public String getAppVersion() {
-        return appVersion;
-    }
-    
-    public void setAppVersion(String appVersion) {
-        this.appVersion = appVersion;
-    }
-    
-    public TicketCategory getCategory() {
-        return category;
-    }
-    
-    public void setCategory(TicketCategory category) {
-        this.category = category;
-    }
-    
-    public String getAnalysisResult() {
-        return analysisResult;
-    }
-    
-    public void setAnalysisResult(String analysisResult) {
-        this.analysisResult = analysisResult;
-    }
-    
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
-    
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
-    }
-    
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-    
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-    
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }
 

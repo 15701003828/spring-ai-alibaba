@@ -24,7 +24,7 @@ import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
 import com.alibaba.cloud.ai.graph.agent.hook.hip.HumanInTheLoopHook;
 import com.alibaba.cloud.ai.graph.agent.hook.summarization.SummarizationHook;
 import com.alibaba.cloud.ai.graph.agent.hook.toolcalllimit.ToolCallLimitHook;
-import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
+//import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
 
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import org.springframework.ai.chat.client.ChatClient;
@@ -84,11 +84,11 @@ public class TicketAnalysisAgentSystem {
             .messagesToKeep(10) // 保留最近10条消息
             .build();
         
-        // 初始化人工审核Hook - 对重要操作进行人工审核
-        this.humanInTheLoopHook = HumanInTheLoopHook.builder()
-            .approvalOn("search_similar_tickets", 
-                "请审核是否检索相似工单。对于高优先级工单，需要人工确认。")
-            .build();
+         // 初始化人工审核Hook - 对重要操作进行人工审核（暂时禁用）
+         this.humanInTheLoopHook = HumanInTheLoopHook.builder()
+             .approvalOn("search_similar_tickets",
+                 "请审核是否检索相似工单。对于高优先级工单，需要人工确认。")
+             .build();
         
         // 初始化工具调用限制Hook - 防止无限循环
         this.toolCallLimitHook = ToolCallLimitHook.builder()
@@ -110,8 +110,8 @@ public class TicketAnalysisAgentSystem {
                 """)
             .tools(createImageAnalysisTool())
             .outputKey("structured_ticket")
-            .hooks(summarizationHook, toolCallLimitHook)
-            .saver(new MemorySaver())
+            // .hooks(summarizationHook, toolCallLimitHook) // 暂时禁用Hook排查问题
+            // .saver(new MemorySaver()) // 暂时禁用，避免Duplicate @class问题
             .build();
     }
     
@@ -129,8 +129,8 @@ public class TicketAnalysisAgentSystem {
                 """)
             .tools(createCachedSimilarTicketSearchTool())
             .outputKey("classification_result")
-            .hooks(summarizationHook, humanInTheLoopHook, toolCallLimitHook)
-            .saver(new MemorySaver())
+            // .hooks(summarizationHook, /*humanInTheLoopHook,*/ toolCallLimitHook) // 暂时禁用Hook排查问题
+            // .saver(new MemorySaver()) // 暂时禁用，避免Duplicate @class问题
             .build();
     }
     
@@ -147,8 +147,8 @@ public class TicketAnalysisAgentSystem {
                 3. 评估问题的影响范围
                 """)
             .outputKey("root_cause_analysis")
-            .hooks(summarizationHook, toolCallLimitHook)
-            .saver(new MemorySaver())
+            // .hooks(summarizationHook, toolCallLimitHook) // 暂时禁用Hook排查问题
+            // .saver(new MemorySaver()) // 暂时禁用，避免Duplicate @class问题
             .build();
         
         ReactAgent impactAssessmentAgent = ReactAgent.builder()
@@ -161,8 +161,8 @@ public class TicketAnalysisAgentSystem {
                 3. 确定问题优先级
                 """)
             .outputKey("impact_assessment")
-            .hooks(summarizationHook, toolCallLimitHook)
-            .saver(new MemorySaver())
+            // .hooks(summarizationHook, toolCallLimitHook) // 暂时禁用Hook排查问题
+            // .saver(new MemorySaver()) // 暂时禁用，避免Duplicate @class问题
             .build();
         
         ReactAgent solutionAgent = ReactAgent.builder()
@@ -175,8 +175,8 @@ public class TicketAnalysisAgentSystem {
                 3. 提供长期改进建议
                 """)
             .outputKey("solution_proposal")
-            .hooks(summarizationHook, toolCallLimitHook)
-            .saver(new MemorySaver())
+            // .hooks(summarizationHook, toolCallLimitHook) // 暂时禁用Hook排查问题
+            // .saver(new MemorySaver()) // 暂时禁用，避免Duplicate @class问题
             .build();
         
         // 使用ParallelAgent并行执行多个分析任务
@@ -203,8 +203,8 @@ public class TicketAnalysisAgentSystem {
                 6. 优先级评估
                 """)
             .outputKey("final_report")
-            .hooks(summarizationHook, humanInTheLoopHook, toolCallLimitHook)
-            .saver(new MemorySaver())
+            // .hooks(summarizationHook, /*humanInTheLoopHook,*/ toolCallLimitHook) // 暂时禁用Hook排查问题
+            // .saver(new MemorySaver()) // 暂时禁用，避免Duplicate @class问题
             .build();
     }
     
